@@ -1,0 +1,8 @@
+__pycache__/
+.streamlit/
+.venv/
+venv/
+*.py[cod]
+.DS_Store
+uploads/
+test_photos/
