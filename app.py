@@ -34,6 +34,10 @@ st.markdown(
         border-radius:18px; padding:1.2rem; margin:.4rem 0 1rem;}
     .score {font-size:3.2rem; line-height:1; font-weight:800; color:#6d28d9;}
     .score-label {color:#475569; margin-top:.45rem;}
+    .explain-card {background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px;
+        padding:1rem 1.15rem; margin:.7rem 0;}
+    .explain-card h4 {margin:.05rem 0 .45rem; color:#1e293b;}
+    .explain-card p {margin:.25rem 0; color:#475569;}
     .fineprint {color:#64748b; font-size:.87rem;}
     </style>
     <div class="hero">
@@ -135,6 +139,18 @@ def quality_label(q: float) -> str:
     return "Low"
 
 
+def resemblance_label(score: int) -> tuple[str, str]:
+    if score >= 80:
+        return "Very strong", "The facial embeddings are unusually close for two different people."
+    if score >= 65:
+        return "Strong", "The model found a clear visual resemblance across the aligned faces."
+    if score >= 50:
+        return "Moderate", "The model found some shared facial patterns, alongside noticeable differences."
+    if score >= 35:
+        return "Mild", "A few facial patterns appear similar, but the overall match is limited."
+    return "Low", "The model found more visual differences than similarities in these particular photos."
+
+
 def upload_panel(label: str, help_text: str, key: str, optional: bool = False):
     suffix = " (optional)" if optional else ""
     st.subheader(label + suffix)
@@ -217,6 +233,46 @@ if child_file and parent_file:
                 else:
                     st.metric("Similar-age comparison", "Not added")
                     st.caption("Upload a childhood photo of the parent to add this result.")
+
+            strength, strength_text = resemblance_label(overall)
+            current_confidence = quality_label(min(child_face.quality, parent_face.quality))
+            if past_score is not None:
+                past_confidence = quality_label(min(child_face.quality, past_face.quality))
+                age_text = (
+                    f"The similar-age comparison scored {past_score}/100 with {past_confidence.lower()} "
+                    "image confidence. It contributes to the overall result, but blurry or small childhood "
+                    "photos receive less weight."
+                )
+            else:
+                age_text = (
+                    "No childhood photo was supplied, so the overall result uses only the current parent "
+                    "comparison. Adding one can reduce the effect of age-related facial changes."
+                )
+
+            st.markdown("#### Why this score?")
+            st.markdown(
+                f"""
+                <div class="explain-card">
+                  <h4>{strength} model resemblance</h4>
+                  <p>{strength_text} The current child–parent comparison was <b>{current_score}/100</b>.</p>
+                </div>
+                <div class="explain-card">
+                  <h4>{current_confidence} photo confidence</h4>
+                  <p>The app considers face size, detector confidence and sharpness. Clear, front-facing
+                  photos receive more weight; blur, strong angles and small faces reduce confidence.</p>
+                </div>
+                <div class="explain-card">
+                  <h4>Age-comparable evidence</h4>
+                  <p>{age_text}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.caption(
+                "The model compares the complete mathematical pattern of each aligned face. It does not "
+                "independently prove that the eyes, nose or mouth came from the same relative, and the "
+                "score is not a percentage probability of biological relationship."
+            )
 
             st.markdown("#### Faces used")
             previews = st.columns(3 if past_face is not None else 2)
